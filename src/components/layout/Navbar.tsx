@@ -5,13 +5,15 @@ import { useAuth } from '../../context/AuthContext';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(false);
   const { isAuthenticated, logout } = useAuth();
   const location = useLocation();
 
   const toggleMenu = () => setIsOpen(!isOpen);
   const closeMenu = () => setIsOpen(false);
+  const toggleAdminMenu = () => setIsAdminMenuOpen(!isAdminMenuOpen);
 
-  const isActive = (path: string) => {
+  const isActive = (path) => {
     return location.pathname === path;
   };
 
@@ -67,48 +69,81 @@ const Navbar = () => {
                   <button 
                     type="button" 
                     className="inline-flex items-center gap-x-1 text-sm font-medium text-white hover:text-blue-400"
-                    onClick={() => setIsOpen(!isOpen)}
+                    onClick={toggleAdminMenu}
                   >
                     Admin
-                    <ChevronDown className="h-4 w-4" />
+                    <ChevronDown className={`h-4 w-4 transition-transform ${isAdminMenuOpen ? 'rotate-180' : ''}`} />
                   </button>
                 </div>
 
-                {isOpen && (
-                  <div className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white dark:bg-slate-800 shadow-lg ring-1 ring-black ring-opacity-5">
+                {isAdminMenuOpen && (
+                  <div className="absolute right-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white dark:bg-slate-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
                     <div className="py-1">
                       <Link 
                         to="/admin" 
                         className="block px-4 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700"
-                        onClick={closeMenu}
+                        onClick={() => {
+                          closeMenu();
+                          setIsAdminMenuOpen(false);
+                        }}
                       >
                         Dashboard
                       </Link>
                       <Link 
                         to="/admin/projects" 
                         className="block px-4 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700"
-                        onClick={closeMenu}
+                        onClick={() => {
+                          closeMenu();
+                          setIsAdminMenuOpen(false);
+                        }}
                       >
                         Manage Projects
                       </Link>
                       <Link 
                         to="/admin/inquiries" 
                         className="block px-4 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700"
-                        onClick={closeMenu}
+                        onClick={() => {
+                          closeMenu();
+                          setIsAdminMenuOpen(false);
+                        }}
                       >
                         Inquiries
                       </Link>
                       <Link 
                         to="/admin/orders" 
                         className="block px-4 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700"
-                        onClick={closeMenu}
+                        onClick={() => {
+                          closeMenu();
+                          setIsAdminMenuOpen(false);
+                        }}
                       >
                         Orders
+                      </Link>
+                      <Link 
+                        to="/admin/document-delivery" 
+                        className="block px-4 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700"
+                        onClick={() => {
+                          closeMenu();
+                          setIsAdminMenuOpen(false);
+                        }}
+                      >
+                        Document Delivery
+                      </Link>
+                      <Link 
+                        to="/admin/document-status" 
+                        className="block px-4 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700"
+                        onClick={() => {
+                          closeMenu();
+                          setIsAdminMenuOpen(false);
+                        }}
+                      >
+                        Document Status
                       </Link>
                       <button 
                         onClick={() => {
                           logout();
                           closeMenu();
+                          setIsAdminMenuOpen(false);
                         }}
                         className="block w-full text-left px-4 py-2 text-sm text-red-700 dark:text-red-500 hover:bg-gray-100 dark:hover:bg-slate-700"
                       >
@@ -132,6 +167,7 @@ const Navbar = () => {
           <button 
             className="md:hidden text-white focus:outline-none" 
             onClick={toggleMenu}
+            aria-label="Toggle menu"
           >
             {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
@@ -205,6 +241,20 @@ const Navbar = () => {
                     onClick={closeMenu}
                   >
                     Orders
+                  </Link>
+                  <Link 
+                    to="/admin/document-delivery" 
+                    className="text-base font-medium text-white hover:text-blue-400"
+                    onClick={closeMenu}
+                  >
+                    Document Delivery
+                  </Link>
+                  <Link 
+                    to="/admin/document-status" 
+                    className="text-base font-medium text-white hover:text-blue-400"
+                    onClick={closeMenu}
+                  >
+                    Document Status
                   </Link>
                   <button 
                     onClick={() => {
