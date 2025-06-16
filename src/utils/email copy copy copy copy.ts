@@ -56,22 +56,6 @@ interface DocumentDeliveryData {
   access_expires?: string;
 }
 
-interface SecureDocumentDeliveryData {
-  project_title: string;
-  customer_name: string;
-  customer_email: string;
-  order_id: string;
-  secureDocuments: Array<{
-    documentName: string;
-    secureUrl: string;
-    category: string;
-    review_stage: string;
-    size?: number;
-  }>;
-  expiresAt: string;
-  maxDownloads: number;
-}
-
 interface BrevoEmailData {
   sender: {
     name: string;
@@ -337,9 +321,8 @@ export const sendOrderConfirmation = async (
             </div>
             
             <div class="warning">
-              <h3>📧 Secure Document Delivery</h3>
-              <p><strong>You will receive a separate email within 5 minutes</strong> containing secure download links for all project documents.</p>
-              <p><strong>Important:</strong> Download links are time-limited (72 hours) and email-specific for your security.</p>
+              <h3>📧 Document Delivery</h3>
+              <p><strong>You will receive a separate email within 5 minutes</strong> containing download links for all project documents, organized by review stages.</p>
             </div>
             
             <h3>What's Included:</h3>
@@ -348,7 +331,7 @@ export const sendOrderConfirmation = async (
               <li>Comprehensive documentation across 3 review stages</li>
               <li>Installation and setup guides</li>
               <li>Technical specifications and implementation details</li>
-              <li>Secure, time-limited access to all downloads</li>
+              <li>Lifetime access to all downloads</li>
               <li>Email support for technical questions</li>
             </ul>
             
@@ -388,248 +371,13 @@ export const sendOrderConfirmation = async (
   }
 };
 
-// NEW: Secure Document Delivery with time-limited links
-export const sendSecureDocumentDelivery = async (data: SecureDocumentDeliveryData): Promise<void> => {
-  if (!validateEmail(data.customer_email)) {
-    throw new Error('Invalid recipient email address');
-  }
-
-  console.log('🚀 Starting SECURE document delivery process...');
-  console.log('📊 Secure documents available:', data.secureDocuments.length);
-  console.log('📧 Sending to:', data.customer_email);
-
-  const { date } = getCurrentDateTime();
-
-  // Group documents by review stage
-  const documentsByStage = {
-    review_1: data.secureDocuments.filter(doc => doc.review_stage === 'review_1'),
-    review_2: data.secureDocuments.filter(doc => doc.review_stage === 'review_2'),
-    review_3: data.secureDocuments.filter(doc => doc.review_stage === 'review_3')
-  };
-
-  const stageLabels = {
-    review_1: 'Review 1 - Initial Project Review',
-    review_2: 'Review 2 - Mid-Project Assessment', 
-    review_3: 'Review 3 - Final Review & Completion'
-  };
-
-  // Calculate expiration time
-  const expiresAt = new Date(data.expiresAt);
-  const expirationHours = Math.round((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60));
-
-  // Generate HTML content for secure documents
-  const generateStageHtml = (stage: keyof typeof documentsByStage) => {
-    const docs = documentsByStage[stage];
-    if (docs.length === 0) return '';
-
-    return `
-      <div style="margin: 20px 0; padding: 20px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #3b82f6;">
-        <h3 style="color: #1e40af; margin: 0 0 15px 0;">${stageLabels[stage]}</h3>
-        <div style="display: grid; gap: 10px;">
-          ${docs.map(doc => `
-            <div style="background: white; padding: 15px; border-radius: 6px; border: 1px solid #e5e7eb;">
-              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
-                <div>
-                  <h4 style="margin: 0 0 5px 0; color: #1f2937;">${doc.documentName}</h4>
-                  <p style="margin: 0; font-size: 14px; color: #6b7280;">
-                    Category: ${doc.category.charAt(0).toUpperCase() + doc.category.slice(1)}
-                    ${doc.size ? ` • Size: ${formatFileSize(doc.size)}` : ''}
-                  </p>
-                </div>
-              </div>
-              <a href="${doc.secureUrl}" 
-                 style="display: inline-block; padding: 8px 16px; background: #10b981; color: white; text-decoration: none; border-radius: 4px; font-size: 14px; font-weight: 500;"
-                 target="_blank">
-                🔒 Secure Download
-              </a>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
-  };
-
-  try {
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Secure Project Documents - ${data.project_title}</title>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
-          .container { max-width: 700px; margin: 0 auto; padding: 20px; }
-          .header { background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-          .content { background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; }
-          .footer { background: #f9fafb; padding: 20px; text-align: center; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb; border-top: none; }
-          .summary { background: #ecfdf5; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #10b981; }
-          .highlight { color: #059669; font-weight: bold; }
-          .security-notice { background: #fef3c7; border: 1px solid #f59e0b; padding: 15px; border-radius: 6px; margin: 15px 0; }
-          .urgent { background: #fee2e2; border: 1px solid #ef4444; padding: 15px; border-radius: 6px; margin: 15px 0; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>🔒 Secure Project Documents</h1>
-            <p>Your time-limited, secure download links are ready!</p>
-          </div>
-          
-          <div class="content">
-            <h2>Hello ${data.customer_name},</h2>
-            
-            <p>Your secure project documents for <strong>${data.project_title}</strong> are now available for download!</p>
-            
-            <div class="urgent">
-              <h3 style="color: #dc2626; margin-top: 0;">⏰ IMPORTANT: Time-Limited Access</h3>
-              <p style="margin: 0; color: #991b1b;">
-                <strong>These download links expire in ${expirationHours} hours (${expiresAt.toLocaleString()}).</strong><br>
-                Please download all files promptly to avoid losing access.
-              </p>
-            </div>
-            
-            <div class="summary">
-              <h3>📊 Document Summary</h3>
-              <p><strong>Order ID:</strong> <span class="highlight">${data.order_id}</span></p>
-              <p><strong>Total Documents:</strong> ${data.secureDocuments.length}</p>
-              <p><strong>Download Limit:</strong> ${data.maxDownloads} downloads per document</p>
-              <p><strong>Authorized Email:</strong> ${data.customer_email}</p>
-              <p><strong>Expires:</strong> ${expiresAt.toLocaleString()}</p>
-            </div>
-            
-            <h3>📋 Secure Documents by Review Stage</h3>
-            <p>Click the secure download buttons below. Each link is personalized for your email address:</p>
-            
-            ${generateStageHtml('review_1')}
-            ${generateStageHtml('review_2')}
-            ${generateStageHtml('review_3')}
-            
-            <div class="security-notice">
-              <h3 style="color: #d97706; margin-top: 0;">🔐 Security Features</h3>
-              <ul style="margin: 0;">
-                <li><strong>Email Verification:</strong> Links only work for ${data.customer_email}</li>
-                <li><strong>Time-Limited:</strong> Access expires in ${expirationHours} hours</li>
-                <li><strong>Download Tracking:</strong> Limited to ${data.maxDownloads} downloads per document</li>
-                <li><strong>No Sharing:</strong> Links cannot be forwarded to other users</li>
-                <li><strong>Audit Trail:</strong> All access attempts are logged for security</li>
-              </ul>
-            </div>
-            
-            <div style="background: #dbeafe; border: 1px solid #3b82f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <h3 style="color: #1e40af; margin-top: 0;">📥 Download Instructions</h3>
-              <ol style="margin: 0;">
-                <li>Click the "🔒 Secure Download" button for each document</li>
-                <li>You'll be asked to verify your email address</li>
-                <li>Once verified, the download will start automatically</li>
-                <li>Save all files to your computer before the links expire</li>
-              </ol>
-            </div>
-            
-            <div style="background: #fee2e2; border: 1px solid #ef4444; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <h3 style="color: #dc2626; margin-top: 0;">⚠️ What if links expire?</h3>
-              <p style="margin: 0; color: #991b1b;">
-                If your download links expire, you can request new ones by contacting us at 
-                <a href="mailto:${CONFIG.developerEmail}" style="color: #dc2626;">${CONFIG.developerEmail}</a>
-                with your order ID: <strong>${data.order_id}</strong>
-              </p>
-            </div>
-            
-            <h3>💬 Need Help?</h3>
-            <p>If you have any questions about downloading, implementation, or need technical support:</p>
-            <p><strong>Email:</strong> <a href="mailto:${CONFIG.developerEmail}">${CONFIG.developerEmail}</a></p>
-            <p><strong>Order ID:</strong> ${data.order_id}</p>
-            
-            <p>Thank you for choosing TechCreator. Download your files securely!</p>
-          </div>
-          
-          <div class="footer">
-            <p>&copy; 2025 TechCreator. All rights reserved.</p>
-            <p>This email contains secure, time-limited download links. Please keep it safe.</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
-
-    const emailData: BrevoEmailData = {
-      sender: {
-        name: CONFIG.brevo.senderName,
-        email: CONFIG.brevo.senderEmail
-      },
-      to: [{
-        email: data.customer_email,
-        name: data.customer_name
-      }],
-      subject: `🔒 Secure Documents Ready - ${data.project_title} (Expires in ${expirationHours}h)`,
-      htmlContent,
-      tags: ['secure-document-delivery', 'time-limited', 'transactional']
-    };
-
-    await sendBrevoEmail(emailData);
-    console.log('✅ SECURE document delivery email sent successfully via Brevo');
-
-  } catch (brevoError) {
-    console.log('❌ Brevo failed for secure document delivery, trying EmailJS fallback...');
-    console.error('Brevo error:', brevoError);
-    
-    try {
-      await sendEmailJSSecureDocumentDelivery(data);
-      console.log('✅ SECURE document delivery email sent successfully via EmailJS');
-    } catch (emailjsError) {
-      console.error('❌ Both Brevo and EmailJS failed for secure document delivery');
-      console.error('EmailJS error:', emailjsError);
-      
-      // Throw error so the UI shows the failure
-      throw new Error(`Failed to send secure document delivery email: ${brevoError.message || emailjsError.message}`);
-    }
-  }
-};
-
-// EmailJS fallback for secure document delivery
-const sendEmailJSSecureDocumentDelivery = async (data: SecureDocumentDeliveryData): Promise<void> => {
-  try {
-    const emailjs = await import('@emailjs/browser');
-    
-    // Create document list text for EmailJS
-    const documentListText = data.secureDocuments.map(doc => 
-      `${doc.documentName} (${doc.category}) - ${doc.secureUrl}`
-    ).join('\n');
-
-    const { date } = getCurrentDateTime();
-    const expiresAt = new Date(data.expiresAt);
-
-    await emailjs.send(
-      CONFIG.emailjs.serviceId,
-      CONFIG.emailjs.templates.contact, // Using contact template as fallback
-      {
-        name: 'TechCreator Secure Document Delivery',
-        email: CONFIG.developerEmail,
-        project_type: 'Secure Document Delivery',
-        budget: 'N/A',
-        message: `SECURE document delivery for ${data.customer_name}\n\nOrder: ${data.order_id}\nProject: ${data.project_title}\n\nSECURE LINKS (Time-limited):\n${documentListText}\n\nExpires: ${expiresAt.toLocaleString()}\nMax Downloads: ${data.maxDownloads}\nAuthorized Email: ${data.customer_email}\n\nDelivery Date: ${date}`,
-        to_email: data.customer_email,
-        reply_to: CONFIG.developerEmail
-      },
-      CONFIG.emailjs.publicKey
-    );
-
-    console.log('Secure document delivery email sent via EmailJS fallback');
-  } catch (error) {
-    console.error('EmailJS secure document delivery failed:', error);
-    throw error;
-  }
-};
-
-// LEGACY: Keep the old function for backward compatibility
+// REAL Document Delivery - This is the main function that actually sends emails
 export const sendDocumentDelivery = async (data: DocumentDeliveryData): Promise<void> => {
-  console.warn('⚠️ Using legacy sendDocumentDelivery. Consider upgrading to sendSecureDocumentDelivery for enhanced security.');
-  
   if (!validateEmail(data.customer_email)) {
     throw new Error('Invalid recipient email address');
   }
 
-  console.log('🚀 Starting LEGACY document delivery process...');
+  console.log('🚀 Starting REAL document delivery process...');
   console.log('📊 Documents available:', data.documents.length);
   console.log('📧 Sending to:', data.customer_email);
 
@@ -640,17 +388,17 @@ export const sendDocumentDelivery = async (data: DocumentDeliveryData): Promise<
     return;
   }
 
-  // Documents are available, send them via Brevo (LEGACY EMAIL)
+  // Documents are available, send them via Brevo (REAL EMAIL)
   try {
     await sendBrevoDocumentDelivery(data);
-    console.log('✅ LEGACY document delivery email sent successfully via Brevo');
+    console.log('✅ REAL document delivery email sent successfully via Brevo');
   } catch (brevoError) {
     console.log('❌ Brevo failed for document delivery, trying EmailJS fallback...');
     console.error('Brevo error:', brevoError);
     
     try {
       await sendEmailJSDocumentDelivery(data);
-      console.log('✅ LEGACY document delivery email sent successfully via EmailJS');
+      console.log('✅ REAL document delivery email sent successfully via EmailJS');
     } catch (emailjsError) {
       console.error('❌ Both Brevo and EmailJS failed for document delivery');
       console.error('EmailJS error:', emailjsError);
@@ -721,7 +469,7 @@ const sendNoDocumentsNotification = async (data: DocumentDeliveryData): Promise<
               </div>
               
               <div style="background: white; padding: 15px; border-radius: 6px; border-left: 4px solid #10b981;">
-                <p style="margin: 0;"><strong>📧 Delivery Method:</strong> All documents will be sent to this email address with secure, time-limited download links.</p>
+                <p style="margin: 0;"><strong>📧 Delivery Method:</strong> All documents will be sent to this email address with direct download links organized by review stages.</p>
               </div>
             </div>
             
@@ -730,8 +478,8 @@ const sendNoDocumentsNotification = async (data: DocumentDeliveryData): Promise<
               <ol style="margin: 0;">
                 <li><strong>Document Preparation:</strong> Our team is organizing your project files</li>
                 <li><strong>Quality Check:</strong> Ensuring all documents are complete and accessible</li>
-                <li><strong>Secure Delivery:</strong> You'll receive time-limited download links within 3 days</li>
-                <li><strong>Secure Access:</strong> Links will be personalized for your email address</li>
+                <li><strong>Email Delivery:</strong> You'll receive download links within 3 days</li>
+                <li><strong>Lifetime Access:</strong> Save the email for future downloads</li>
               </ol>
             </div>
             
@@ -740,7 +488,7 @@ const sendNoDocumentsNotification = async (data: DocumentDeliveryData): Promise<
             <p><strong>Email:</strong> <a href="mailto:${CONFIG.developerEmail}">${CONFIG.developerEmail}</a></p>
             <p><strong>Response Time:</strong> Within 24 hours</p>
             
-            <p>Thank you for choosing TechCreator. We're preparing your secure project documents with care!</p>
+            <p>Thank you for choosing TechCreator. We're preparing your project documents with care!</p>
           </div>
           
           <div class="footer">
@@ -761,7 +509,7 @@ const sendNoDocumentsNotification = async (data: DocumentDeliveryData): Promise<
         email: data.customer_email,
         name: data.customer_name
       }],
-      subject: `📋 Secure Documents Coming Soon - ${data.project_title} (${data.order_id})`,
+      subject: `📋 Project Documents Coming Soon - ${data.project_title} (${data.order_id})`,
       htmlContent,
       tags: ['document-preparation', 'order-processing', 'coming-soon']
     };
@@ -774,7 +522,7 @@ const sendNoDocumentsNotification = async (data: DocumentDeliveryData): Promise<
   }
 };
 
-// Brevo document delivery (when documents are available) - LEGACY
+// Brevo document delivery (when documents are available) - REAL EMAIL SENDING
 const sendBrevoDocumentDelivery = async (data: DocumentDeliveryData): Promise<void> => {
   const { date } = getCurrentDateTime();
 
@@ -908,11 +656,11 @@ const sendBrevoDocumentDelivery = async (data: DocumentDeliveryData): Promise<vo
     tags: ['document-delivery', 'transactional', 'project-files']
   };
 
-  // This is the LEGACY email sending call
+  // This is the REAL email sending call
   await sendBrevoEmail(emailData);
 };
 
-// EmailJS fallback for document delivery - LEGACY
+// EmailJS fallback for document delivery
 const sendEmailJSDocumentDelivery = async (data: DocumentDeliveryData): Promise<void> => {
   try {
     const emailjs = await import('@emailjs/browser');
@@ -971,21 +719,17 @@ Thank you for purchasing "${projectTitle}"!
 Your Order ID: ${orderId}
 
 What happens next:
-1. You will receive a separate email within 5 minutes containing SECURE download links for all project documents
+1. You will receive a separate email within 5 minutes containing download links for all project documents
 2. Documents are organized by review stages (Review 1, 2, and 3)
 3. Each document includes presentations, documentation, and reports as applicable
-4. Download links are TIME-LIMITED (72 hours) and EMAIL-SPECIFIC for your security
-5. You'll have secure access to download these documents
+4. You'll have lifetime access to download these documents
 
-The secure document delivery email will include:
-• Time-limited download links (72 hours)
-• Email-verified access (only works for your email)
+The document delivery email will include:
+• Direct download links for all files
 • Documents grouped by review stage
 • File size information
 • Technical specifications
 • Implementation guides
-
-IMPORTANT: Download links expire after 72 hours for security. If you need new links after expiration, contact us with your order ID.
 
 If you have any questions or need support, please contact us at ${CONFIG.developerEmail}
 

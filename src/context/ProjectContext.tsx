@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Project, Inquiry, Order, ProjectDocument } from '../types';
-import { sendDocumentDelivery, generateDownloadInstructions } from '../utils/email';
+import { sendDocumentDelivery, sendSecureDocumentDelivery, generateDownloadInstructions } from '../utils/email';
+import { generateSecureDownloadTokens } from '../utils/secureDownloads';
 
 type ProjectContextType = {
   projects: Project[];
@@ -22,6 +23,7 @@ type ProjectContextType = {
   getProjectDocuments: (projectId: string) => ProjectDocument[];
   getDocumentsByReviewStage: (projectId: string, reviewStage: string) => ProjectDocument[];
   sendProjectDocuments: (orderId: string, customerEmail: string, customerName: string) => Promise<void>;
+  sendSecureProjectDocuments: (orderId: string, customerEmail: string, customerName: string, useSecure?: boolean) => Promise<void>;
 };
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -355,11 +357,11 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     setOrders(prevOrders => [...prevOrders, convertedOrder]);
 
-    // Automatically send document delivery email after successful order
+    // Automatically send secure document delivery email after successful order
     try {
-      await sendProjectDocumentsForOrder(convertedOrder, order.customerEmail, order.customerName);
+      await sendSecureProjectDocumentsForOrder(convertedOrder, order.customerEmail, order.customerName, true);
     } catch (emailError) {
-      console.error('Error sending document delivery email:', emailError);
+      console.error('Error sending secure document delivery email:', emailError);
       // Don't throw here as the order was successful, just log the email error
     }
 
@@ -468,8 +470,13 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     );
   };
 
-  // Helper function to send documents for a specific order object
-  const sendProjectDocumentsForOrder = async (order: Order, customerEmail: string, customerName: string) => {
+  // Helper function to send secure documents for a specific order object
+  const sendSecureProjectDocumentsForOrder = async (
+    order: Order, 
+    customerEmail: string, 
+    customerName: string, 
+    useSecure: boolean = true
+  ) => {
     try {
       // Get all documents for the project
       const documents = getProjectDocuments(order.projectId);
@@ -479,31 +486,79 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return;
       }
 
-      // Format documents for email
-      const formattedDocuments = documents.map(doc => ({
-        name: doc.name,
-        url: doc.url,
-        category: doc.document_category,
-        review_stage: doc.review_stage
-      }));
+      if (useSecure) {
+        console.log('🔒 Using SECURE document delivery with time-limited links');
+        
+        // Generate secure download tokens
+        const secureUrls = await generateSecureDownloadTokens(
+          documents.map(doc => ({
+            id: doc.id,
+            name: doc.name,
+            url: doc.url
+          })),
+          customerEmail,
+          order.id,
+          {
+            expirationHours: 72, // 3 days
+            maxDownloads: 5,
+            requireEmailVerification: true
+          }
+        );
 
-      // Send document delivery email
-      await sendDocumentDelivery({
-        project_title: order.projectTitle,
-        customer_name: customerName,
-        customer_email: customerEmail,
-        order_id: order.id,
-        documents: formattedDocuments,
-        access_expires: 'Never (lifetime access)'
-      });
+        // Format secure documents for email
+        const secureDocuments = secureUrls.map(secureUrl => {
+          const originalDoc = documents.find(doc => doc.id === secureUrl.documentId);
+          return {
+            documentName: secureUrl.documentName,
+            secureUrl: secureUrl.secureUrl,
+            category: originalDoc?.document_category || 'document',
+            review_stage: originalDoc?.review_stage || 'review_1',
+            size: originalDoc?.size || 0
+          };
+        });
 
-      console.log('Document delivery email sent successfully');
+        // Send secure document delivery email
+        await sendSecureDocumentDelivery({
+          project_title: order.projectTitle,
+          customer_name: customerName,
+          customer_email: customerEmail,
+          order_id: order.id,
+          secureDocuments,
+          expiresAt: secureUrls[0]?.expiresAt || new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(),
+          maxDownloads: 5
+        });
+
+        console.log('✅ Secure document delivery email sent successfully');
+      } else {
+        console.log('📧 Using LEGACY document delivery with direct links');
+        
+        // Format documents for legacy email
+        const formattedDocuments = documents.map(doc => ({
+          name: doc.name,
+          url: doc.url,
+          category: doc.document_category,
+          review_stage: doc.review_stage
+        }));
+
+        // Send legacy document delivery email
+        await sendDocumentDelivery({
+          project_title: order.projectTitle,
+          customer_name: customerName,
+          customer_email: customerEmail,
+          order_id: order.id,
+          documents: formattedDocuments,
+          access_expires: 'Never (lifetime access)'
+        });
+
+        console.log('✅ Legacy document delivery email sent successfully');
+      }
     } catch (error) {
       console.error('Error sending project documents:', error);
       throw error;
     }
   };
 
+  // Legacy function for backward compatibility
   const sendProjectDocuments = async (orderId: string, customerEmail: string, customerName: string) => {
     try {
       // Find the order to get project details
@@ -512,9 +567,30 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         throw new Error('Order not found');
       }
 
-      await sendProjectDocumentsForOrder(order, customerEmail, customerName);
+      await sendSecureProjectDocumentsForOrder(order, customerEmail, customerName, false);
     } catch (error) {
       console.error('Error sending project documents:', error);
+      throw error;
+    }
+  };
+
+  // New secure function
+  const sendSecureProjectDocuments = async (
+    orderId: string, 
+    customerEmail: string, 
+    customerName: string, 
+    useSecure: boolean = true
+  ) => {
+    try {
+      // Find the order to get project details
+      const order = orders.find(o => o.id === orderId);
+      if (!order) {
+        throw new Error('Order not found');
+      }
+
+      await sendSecureProjectDocumentsForOrder(order, customerEmail, customerName, useSecure);
+    } catch (error) {
+      console.error('Error sending secure project documents:', error);
       throw error;
     }
   };
@@ -540,6 +616,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         getProjectDocuments,
         getDocumentsByReviewStage,
         sendProjectDocuments,
+        sendSecureProjectDocuments,
       }}
     >
       {children}

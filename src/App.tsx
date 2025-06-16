@@ -15,6 +15,7 @@ import AdminOrdersPage from './pages/admin/AdminOrdersPage';
 import AdminDocumentDeliveryPage from './pages/admin/AdminDocumentDeliveryPage';
 import AdminDocumentStatusPage from './pages/admin/AdminDocumentStatusPage';
 import AdminSettingsPage from './pages/admin/AdminSettingsPage';
+import SecureDownloadPage from './pages/SecureDownloadPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
 import { ProjectProvider } from './context/ProjectContext';
@@ -37,6 +38,7 @@ function App() {
                   <Route path="/checkout/:id" element={<CheckoutPage />} />
                   <Route path="/contact" element={<ContactPage />} />
                   <Route path="/admin/login" element={<AdminLoginPage />} />
+                  <Route path="/secure-download/:token" element={<SecureDownloadPage />} />
                   <Route 
                     path="/admin" 
                     element={
